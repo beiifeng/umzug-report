@@ -1,0 +1,19 @@
+{
+  "name": "umzug-column-report",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "start": "tsc && node ./dist/index.js"
+  },
+  "keywords": [],
+  "author": "beiifeng",
+  "license": "MIT",
+  "dependencies": {
+    "sequelize": "6",
+    "sqlite3": "^5.1.7",
+    "umzug": "^3.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.3"
+  }
+}
