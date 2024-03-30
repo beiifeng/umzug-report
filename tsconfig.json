@@ -2,7 +2,7 @@
   "compilerOptions": {
     "allowSyntheticDefaultImports": true,
     "baseUrl": "./",
-    "declaration": true,
+    "declaration": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": false,
@@ -19,5 +19,5 @@
     "strictNullChecks": false,
     "target": "esnext"
   },
-  "include": ["src"]
+  "include": ["src/**/*"]
 }

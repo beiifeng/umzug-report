@@ -23,6 +23,7 @@
  */
 import * as os from "node:os";
 import type { MigrationParams, UmzugStorage } from "umzug";
+import { UmzugContext } from "./interface";
 
 /**
  * Minimal structure of a sequelize model, defined here to avoid a hard dependency.
@@ -82,7 +83,7 @@ export type OYetStorageConstructorOptions = {
   readonly schema?: any;
 };
 
-export class OYetStorage implements UmzugStorage {
+export class OYetStorage implements UmzugStorage<UmzugContext> {
   public readonly sequelize: SequelizeType;
   public readonly columnType: string;
   public readonly timestamps: boolean;
@@ -140,8 +141,6 @@ export class OYetStorage implements UmzugStorage {
         timestamps: this.timestamps,
         paranoid: this.paranoid,
         updatedAt: false,
-        charset: "utf8",
-        collate: "utf8_unicode_ci",
       }
     ) as ModelClassType;
   }
@@ -150,17 +149,16 @@ export class OYetStorage implements UmzugStorage {
     await this.model.sync();
   }
 
-  async logMigration(params: MigrationParams<unknown>): Promise<void> {
+  async logMigration(params: MigrationParams<UmzugContext>): Promise<void> {
     await this.syncModel();
     await this.model.create({
       name: params.name,
-      // TODO This was we want.
-      author: (params as any).author,
+      author: params.context.meta[params.path]?.author,
       executor: `${os.hostname()}\\${os.userInfo().username}`,
     });
   }
 
-  async unlogMigration({ name }: { name: string }): Promise<void> {
+  async unlogMigration({ name }: MigrationParams<UmzugContext>): Promise<void> {
     await this.syncModel();
     await this.model.destroy({
       where: {
@@ -181,7 +179,6 @@ export class OYetStorage implements UmzugStorage {
           `Unexpected migration name type: expected string, got ${typeof name}`
         );
       }
-
       return name;
     });
   }

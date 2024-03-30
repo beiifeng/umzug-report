@@ -1,6 +1,6 @@
 import { Sequelize } from "sequelize";
-import { prepareEnv, resolveBasePath } from "./utils";
 import { migration } from "./umzug";
+import { prepareEnv, resolveBasePath } from "./utils";
 
 const run = async () => {
   prepareEnv(__dirname);
@@ -18,6 +18,7 @@ const run = async () => {
   });
 
   await migration(sequelize);
+  await sequelize.close();
 };
 
 run();

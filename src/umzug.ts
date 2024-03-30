@@ -1,75 +1,90 @@
-import { setup } from "./migrations/setup";
-import { isArray, resolveBasePath } from "./utils";
 import { readFileSync } from "fs";
-import { basename, join } from "path";
-import { QueryInterface, Sequelize } from "sequelize";
-import { RunnableMigration, Umzug } from "umzug";
+import { basename } from "path";
+import { Sequelize } from "sequelize";
+import { MigrationParams, RunnableMigration, Umzug } from "umzug";
+import {
+  CustomMeta,
+  DialectType,
+  MigrationAction,
+  MigrationItem,
+  UmzugContext,
+} from "./interface";
+import { setup } from "./migrations/setup";
 import { OYetStorage } from "./oyetstorage";
+import { isArray, resolveBasePath } from "./utils";
 
-export type SupportedDialect = "*" | "sqlite" | "mysql";
-export type MigrationType = "sql" | "js";
-export type MigrationItem = {
-  author: string;
-  description?: string;
-  file: string;
-  dialect: SupportedDialect | SupportedDialect[];
-  type: MigrationType;
-};
-
-// TODO What we want:
-// declare module "umzug" {
-//   interface MigrationMeta {
-//     author: string;
-//   }
-//   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-//   interface MigrationParams<T> {
-//     author: string;
-//   }
-// }
-
-const isDialectMatched = (item: MigrationItem, dialect: SupportedDialect) => {
+const isDialectMatched = (item: MigrationItem, dialect: DialectType) => {
   if (isArray(item.dialect)) {
     return item.dialect.includes(dialect);
   }
   return item.dialect === dialect || item.dialect === "*";
 };
 
+const toSqlMigration = (
+  item: MigrationItem,
+  metaMap: Record<string, CustomMeta>
+): RunnableMigration<UmzugContext> => {
+  metaMap[item.file] = { author: item.author };
+  return {
+    path: item.file,
+    // you can use `x.file` also.
+    name: basename(item.file),
+    up: async ({ context }: MigrationParams<UmzugContext>) => {
+      const sql = readFileSync(
+        resolveBasePath("./migrations", item.file),
+        "utf8"
+      );
+      context.queryInterface.sequelize.transaction(async (tran) => {
+        // FIXME only execute one raw;
+        return await context.queryInterface.sequelize.query(sql, {
+          type: "RAW",
+          transaction: tran,
+        });
+      });
+    },
+  };
+};
+
+const toJsMigration = (
+  item: MigrationItem,
+  metaMap: Record<string, CustomMeta>
+): RunnableMigration<UmzugContext> => {
+  metaMap[item.file] = { author: item.author };
+  return {
+    path: item.file,
+    // you can use `x.file` also.
+    name: basename(item.file),
+    up: async ({ name, context }: MigrationParams<UmzugContext>) => {
+      const { up } = (await import(
+        resolveBasePath("./migrations", item.file)
+      )) as { up: MigrationAction };
+      return up({ name, context: context.queryInterface });
+    },
+  };
+};
+
 export const migration = async (sequelize: Sequelize) => {
-  const dialect = sequelize.getDialect() as SupportedDialect;
+  const dialect = sequelize.getDialect() as DialectType;
   const currentDialectItems = setup.include.filter((x) =>
     isDialectMatched(x, dialect)
   );
-  const sqlItems = currentDialectItems.filter((x) => x.type === "sql");
-  const jsItems = currentDialectItems.filter((x) => x.type === "js");
-  const sqlMigrations: RunnableMigration<QueryInterface>[] = sqlItems.map(
-    (x) => ({
-      // TODO here we want add author meta.
-      author: x.author,
-      name: basename(x.file),
-      up: async () => {
-        const sql = readFileSync(
-          join(resolveBasePath("./migrations"), x.file)
-        ).toString();
-        await sequelize.query(sql);
-      },
+
+  const metaMap: Record<string, CustomMeta> = {};
+  const migrations: RunnableMigration<UmzugContext>[] = currentDialectItems
+    .map((item) => {
+      switch (item.type) {
+        case "sql":
+          return toSqlMigration(item, metaMap);
+        case "js":
+          return toJsMigration(item, metaMap);
+        default:
+          return null;
+      }
     })
-  );
-  const jsMigrations: RunnableMigration<QueryInterface>[] = jsItems.map(
-    (x) => ({
-      // TODO here we want add author meta.
-      author: x.author,
-      name: basename(x.file),
-      up: async (params) => {
-        const { up } = await import(
-          join(resolveBasePath("./migrations"), x.file)
-        );
-        return up(params);
-      },
-    })
-  );
+    .filter((x) => x);
   const umzug = new Umzug({
-    migrations: [...sqlMigrations, ...jsMigrations],
-    context: sequelize.getQueryInterface(),
+    migrations: migrations,
+    context: { queryInterface: sequelize.getQueryInterface(), meta: metaMap },
     storage: new OYetStorage({
       sequelize: sequelize,
       tableName: "sequelize_meta",

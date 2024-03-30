@@ -2,21 +2,17 @@ import { DataTypes } from "sequelize";
 import { MigrationAction } from "../../interface";
 
 export const up: MigrationAction = async ({ context: queryInterface }) => {
-  queryInterface.createTable("user_basic", {
+  queryInterface.createTable("user_role", {
     id: {
       type: DataTypes.INTEGER,
-      primaryKey: true,
       autoIncrement: true,
+      primaryKey: true,
     },
-    login_name: {
-      type: DataTypes.STRING(100),
+    user_id: {
+      type: DataTypes.INTEGER,
     },
-    nick_name: {
-      type: DataTypes.STRING(100),
-    },
-    birthday: {
-      type: DataTypes.DATE,
-      allowNull: true,
+    role_id: {
+      type: DataTypes.INTEGER,
     },
   });
 };

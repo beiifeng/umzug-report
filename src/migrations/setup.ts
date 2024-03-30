@@ -1,9 +1,4 @@
-import { MigrationItem } from "../umzug";
-
-type MigrationSet = {
-  description?: string;
-  include: MigrationItem[];
-};
+import { MigrationSet } from "../interface";
 
 const setup: MigrationSet = {
   description: "The entry config of the umzug migrations.",
@@ -14,6 +9,20 @@ const setup: MigrationSet = {
       file: "./initial/000_initial.js",
       dialect: "*",
       type: "js",
+    },
+    {
+      author: "Wang YiFei",
+      description: "The db init script.",
+      file: "./initial/001_initial.js",
+      dialect: "*",
+      type: "js",
+    },
+    {
+      author: "Wang YiFei",
+      description: "The db init script.",
+      file: "./initial/s001_user_role.sql",
+      dialect: "*",
+      type: "sql",
     },
   ],
 };
