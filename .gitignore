@@ -4,6 +4,7 @@
 /out
 /output
 /data/
+package-lock.json
 
 # Logs
 logs
